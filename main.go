@@ -2,8 +2,74 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
+	"log"
 	"net/http"
 )
+
+type Rating struct {
+	Average float32 `json:"average"`
+	Reviews int32   `json:"reviews"`
+}
+
+type Beer struct {
+	Id     int32  `json:"id"`
+	Name   string `json:"name"`
+	Price  string `json:"price"`
+	Rating Rating `json:"rating"`
+	Image  string `json:"image"`
+}
+
+func (b *Beer) UnmarshalJSON(data []byte) error {
+	var aux struct {
+		Id     any    `json:"id"`
+		Name   string `json:"name"`
+		Rating any    `json:"rating"`
+		Price  string `json:"price"`
+		Image  string `json:"image"`
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	switch v := aux.Id.(type) {
+	case float64:
+		b.Id = int32(v)
+	case string:
+		var idInt int
+		if _, err := fmt.Sscanf(v, "%d", &idInt); err != nil {
+			return fmt.Errorf("invalid id string: %v", err)
+		}
+		b.Id = int32(idInt)
+	default:
+		return fmt.Errorf("unsupported id type: %T", v)
+	}
+
+	switch r := aux.Rating.(type) {
+	case map[string]any:
+		if avg, ok := r["average"].(float64); ok {
+			b.Rating.Average = float32(avg)
+		} else {
+			b.Rating.Average = 0.0
+		}
+		if rev, ok := r["reviews"].(float64); ok {
+			b.Rating.Reviews = int32(rev)
+		} else {
+			b.Rating.Reviews = 0
+		}
+	case string:
+		b.Rating.Average = 0.0
+		b.Rating.Reviews = 0
+	default:
+		return fmt.Errorf("unsupported rating type: %T", r)
+	}
+
+	b.Name = aux.Name
+	b.Price = aux.Price
+	b.Image = aux.Image
+	return nil
+}
 
 func main() {
 	http.HandleFunc("/", homeHandler)
@@ -25,6 +91,23 @@ func helloHandler(w http.ResponseWriter, r *http.Request) {
 
 func beersHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	beers := []string{"IPA", "Stout", "Lager"}
-	json.NewEncoder(w).Encode(map[string][]string{"beers": beers})
+
+	resp, err := http.Get("https://api.sampleapis.com/beers/ale")
+	if err != nil {
+		log.Fatal("Error fetching beers:", err)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer resp.Body.Close()
+
+	var beers []Beer
+	err = json.Unmarshal(body, &beers)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	json.NewEncoder(w).Encode(beers)
 }
