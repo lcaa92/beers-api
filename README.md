@@ -14,6 +14,9 @@ Study Golang API  - a simple beers API
 - [ ] Generate API docs
 - [ ] Docker compose
 
+#### 
+- [ ] Check differents http servers
+
 #### Database
 - [ ] Add database connection
 - [ ] Configure migrations
