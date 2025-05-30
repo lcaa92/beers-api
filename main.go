@@ -16,6 +16,11 @@ type FormRequest struct {
 	Name string `json:"name"`
 }
 
+type APIResponseError struct {
+	Error   int    `json:"error"`
+	Message string `json:"message"`
+}
+
 type Rating struct {
 	Average float32 `json:"average"`
 	Reviews int32   `json:"reviews"`
@@ -124,7 +129,9 @@ func beersHandler(w http.ResponseWriter, r *http.Request) {
 	baseUrl := fmt.Sprintf("https://api.sampleapis.com/beers/%s", formRequest.Type)
 	parsedURL, err := url.Parse(baseUrl)
 	if err != nil {
-		fmt.Println("Error parsing URL:", err)
+		w.WriteHeader(http.StatusBadRequest)
+		log.Println("Error parsing URL:", err)
+		json.NewEncoder(w).Encode(map[string]string{"error": fmt.Sprintf("Error parsing URL: %v", err)})
 		return
 	}
 
@@ -136,16 +143,27 @@ func beersHandler(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := http.Get(parsedURL.String())
 	if err != nil {
-		log.Fatal("Error fetching beers:", err)
+		log.Println("Error fetching beers:", err)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println("Error reading response body:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": fmt.Sprintf("Error reading response body: %v", err)})
 	}
 	defer resp.Body.Close()
 
-	// ToDo: Handle the case API return error with status code 200
+	// Handle Samples API error response
+	if ok := json.Unmarshal(body, &APIResponseError{}); ok == nil {
+		var apiError APIResponseError
+		log.Println("External API returned an error response: ", string(body))
+		if err := json.Unmarshal(body, &apiError); err == nil {
+			w.WriteHeader(apiError.Error)
+			json.NewEncoder(w).Encode(apiError)
+			return
+		}
+	}
 
 	var beers []Beer
 	err = json.Unmarshal(body, &beers)
