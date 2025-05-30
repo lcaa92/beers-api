@@ -26,7 +26,7 @@ func (b *Beer) UnmarshalJSON(data []byte) error {
 		Id     any    `json:"id"`
 		Name   string `json:"name"`
 		Rating any    `json:"rating"`
-		Price  string `json:"price"`
+		Price  any    `json:"price"`
 		Image  string `json:"image"`
 	}
 	if err := json.Unmarshal(data, &aux); err != nil {
@@ -44,6 +44,15 @@ func (b *Beer) UnmarshalJSON(data []byte) error {
 		b.Id = int32(idInt)
 	default:
 		return fmt.Errorf("unsupported id type: %T", v)
+	}
+
+	switch v := aux.Price.(type) {
+	case float64:
+		b.Price = fmt.Sprintf("$%.2f", v)
+	case string:
+		b.Price = v
+	default:
+		return fmt.Errorf("unsupported price type: %T", v)
 	}
 
 	switch r := aux.Rating.(type) {
@@ -66,7 +75,6 @@ func (b *Beer) UnmarshalJSON(data []byte) error {
 	}
 
 	b.Name = aux.Name
-	b.Price = aux.Price
 	b.Image = aux.Image
 	return nil
 }
