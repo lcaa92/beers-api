@@ -6,7 +6,15 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
+
+	"github.com/go-playground/validator/v10"
 )
+
+type FormRequest struct {
+	Type string `json:"type" validate:"oneof=ale stouts red-ale"`
+	Name string `json:"name"`
+}
 
 type Rating struct {
 	Average float32 `json:"average"`
@@ -100,7 +108,33 @@ func helloHandler(w http.ResponseWriter, r *http.Request) {
 func beersHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	resp, err := http.Get("https://api.sampleapis.com/beers/ale")
+	formRequest := FormRequest{
+		Type: r.FormValue("type"),
+		Name: r.FormValue("name"),
+	}
+
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	err := validate.Struct(formRequest)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": fmt.Sprintf("Validation error: %v", err)})
+		return
+	}
+
+	baseUrl := fmt.Sprintf("https://api.sampleapis.com/beers/%s", formRequest.Type)
+	parsedURL, err := url.Parse(baseUrl)
+	if err != nil {
+		fmt.Println("Error parsing URL:", err)
+		return
+	}
+
+	queryParams := url.Values{}
+	if formRequest.Name != "" {
+		queryParams.Add("name", formRequest.Name)
+	}
+	parsedURL.RawQuery = queryParams.Encode()
+
+	resp, err := http.Get(parsedURL.String())
 	if err != nil {
 		log.Fatal("Error fetching beers:", err)
 	}
@@ -111,10 +145,14 @@ func beersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
+	// ToDo: Handle the case API return error with status code 200
+
 	var beers []Beer
 	err = json.Unmarshal(body, &beers)
 	if err != nil {
-		log.Fatalln(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": fmt.Sprintf("Validation error: %v", err)})
+		return
 	}
 
 	json.NewEncoder(w).Encode(beers)
