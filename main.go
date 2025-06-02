@@ -6,7 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -127,21 +127,7 @@ func beersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	baseUrl := fmt.Sprintf("https://api.sampleapis.com/beers/%s", formRequest.Type)
-	parsedURL, err := url.Parse(baseUrl)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		log.Println("Error parsing URL:", err)
-		json.NewEncoder(w).Encode(map[string]string{"error": fmt.Sprintf("Error parsing URL: %v", err)})
-		return
-	}
-
-	queryParams := url.Values{}
-	if formRequest.Name != "" {
-		queryParams.Add("name", formRequest.Name)
-	}
-	parsedURL.RawQuery = queryParams.Encode()
-
-	resp, err := http.Get(parsedURL.String())
+	resp, err := http.Get(baseUrl)
 	if err != nil {
 		log.Println("Error fetching beers:", err)
 	}
@@ -173,5 +159,23 @@ func beersHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if formRequest.Name != "" {
+		beers = filterBeersByName(beers, formRequest.Name)
+	}
+
 	json.NewEncoder(w).Encode(beers)
+}
+
+func filterBeersByName(beers []Beer, name string) []Beer {
+	if name == "" {
+		return beers
+	}
+
+	var filtered []Beer
+	for _, beer := range beers {
+		if strings.Contains(strings.ToLower(beer.Name), strings.ToLower(name)) {
+			filtered = append(filtered, beer)
+		}
+	}
+	return filtered
 }
