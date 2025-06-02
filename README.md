@@ -8,7 +8,7 @@ Study Golang API  - a simple beers API
 - [ X ] Consume Example API [https://api.sampleapis.com/beers/ale/api-list/beers](https://api.sampleapis.com/beers/ale)
 - [ X ] Configure go mod
 - [ X ] Validation
-- [ ] Code structure
+- [ X ] Code structure
 - [ ] Error handling
 - [ ] Logging
 - [ ] Testing
@@ -19,6 +19,7 @@ Study Golang API  - a simple beers API
 
 #### Extra
 - [ ] Generate API docs
+- [ ] Cache
 - [ ] Check differents http servers
 - [ ] Docker compose
 

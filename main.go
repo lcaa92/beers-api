@@ -9,88 +9,9 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
+	formrequest "github.com/lcaa92/beers-api/internal/form_request"
+	"github.com/lcaa92/beers-api/internal/sampleapis"
 )
-
-type FormRequest struct {
-	Type string `json:"type" validate:"oneof=ale stouts red-ale"`
-	Name string `json:"name"`
-}
-
-type APIResponseError struct {
-	Error   int    `json:"error"`
-	Message string `json:"message"`
-}
-
-type Rating struct {
-	Average float32 `json:"average"`
-	Reviews int32   `json:"reviews"`
-}
-
-type Beer struct {
-	Id     int32  `json:"id"`
-	Name   string `json:"name"`
-	Price  string `json:"price"`
-	Rating Rating `json:"rating"`
-	Image  string `json:"image"`
-}
-
-func (b *Beer) UnmarshalJSON(data []byte) error {
-	var aux struct {
-		Id     any    `json:"id"`
-		Name   string `json:"name"`
-		Rating any    `json:"rating"`
-		Price  any    `json:"price"`
-		Image  string `json:"image"`
-	}
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-
-	switch v := aux.Id.(type) {
-	case float64:
-		b.Id = int32(v)
-	case string:
-		var idInt int
-		if _, err := fmt.Sscanf(v, "%d", &idInt); err != nil {
-			return fmt.Errorf("invalid id string: %v", err)
-		}
-		b.Id = int32(idInt)
-	default:
-		return fmt.Errorf("unsupported id type: %T", v)
-	}
-
-	switch v := aux.Price.(type) {
-	case float64:
-		b.Price = fmt.Sprintf("$%.2f", v)
-	case string:
-		b.Price = v
-	default:
-		return fmt.Errorf("unsupported price type: %T", v)
-	}
-
-	switch r := aux.Rating.(type) {
-	case map[string]any:
-		if avg, ok := r["average"].(float64); ok {
-			b.Rating.Average = float32(avg)
-		} else {
-			b.Rating.Average = 0.0
-		}
-		if rev, ok := r["reviews"].(float64); ok {
-			b.Rating.Reviews = int32(rev)
-		} else {
-			b.Rating.Reviews = 0
-		}
-	case string:
-		b.Rating.Average = 0.0
-		b.Rating.Reviews = 0
-	default:
-		return fmt.Errorf("unsupported rating type: %T", r)
-	}
-
-	b.Name = aux.Name
-	b.Image = aux.Image
-	return nil
-}
 
 func main() {
 	http.HandleFunc("/", homeHandler)
@@ -113,7 +34,7 @@ func helloHandler(w http.ResponseWriter, r *http.Request) {
 func beersHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	formRequest := FormRequest{
+	formRequest := formrequest.FormRequest{
 		Type: r.FormValue("type"),
 		Name: r.FormValue("name"),
 	}
@@ -141,8 +62,8 @@ func beersHandler(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	// Handle Samples API error response
-	if ok := json.Unmarshal(body, &APIResponseError{}); ok == nil {
-		var apiError APIResponseError
+	if ok := json.Unmarshal(body, &sampleapis.APIResponseError{}); ok == nil {
+		var apiError sampleapis.APIResponseError
 		log.Println("External API returned an error response: ", string(body))
 		if err := json.Unmarshal(body, &apiError); err == nil {
 			w.WriteHeader(apiError.Error)
@@ -151,7 +72,7 @@ func beersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var beers []Beer
+	var beers []sampleapis.Beer
 	err = json.Unmarshal(body, &beers)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -166,12 +87,12 @@ func beersHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(beers)
 }
 
-func filterBeersByName(beers []Beer, name string) []Beer {
+func filterBeersByName(beers []sampleapis.Beer, name string) []sampleapis.Beer {
 	if name == "" {
 		return beers
 	}
 
-	var filtered []Beer
+	var filtered []sampleapis.Beer
 	for _, beer := range beers {
 		if strings.Contains(strings.ToLower(beer.Name), strings.ToLower(name)) {
 			filtered = append(filtered, beer)
