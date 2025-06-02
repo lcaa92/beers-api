@@ -15,7 +15,6 @@ import (
 
 func main() {
 	http.HandleFunc("/", homeHandler)
-	http.HandleFunc("/hello", helloHandler)
 	http.HandleFunc("/beers", beersHandler)
 
 	http.ListenAndServe(":8080", nil)
@@ -23,12 +22,7 @@ func main() {
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "Welcome to the home page!"})
-}
-
-func helloHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "Hello, world!"})
+	json.NewEncoder(w).Encode(map[string]string{"version": "0.1.0", "message": "Welcome to the Beers API!"})
 }
 
 func beersHandler(w http.ResponseWriter, r *http.Request) {
