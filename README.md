@@ -12,16 +12,14 @@ Study Golang API  - a simple beers API
 - [ ] Error handling
 - [ ] Logging
 - [ ] Testing
+- [ ] Generate API docs
+- [ ] Authentication
+- [ ] Authorizatio
+- [ ] Docker compose
 
 #### API Behaviour
 - [X] Ordering (API)
 - [X] Filter (API)
-
-#### Extra
-- [ ] Generate API docs
-- [ ] Cache
-- [ ] Check differents http servers
-- [ ] Docker compose
 
 #### Database
 - [ ] Add database connection
@@ -31,3 +29,5 @@ Study Golang API  - a simple beers API
 
 #### Extras
 - [ ] Monitoring and metrics
+- [ ] Check differents http servers
+- [ ] Cache
