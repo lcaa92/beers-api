@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
@@ -29,11 +30,15 @@ func beersHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	formRequest := formrequest.FormRequest{
-		Type: r.FormValue("type"),
-		Name: r.FormValue("name"),
+		Type:    r.FormValue("type"),
+		Name:    r.FormValue("name"),
+		OrderBy: r.FormValue("order_by"),
+		Order:   r.FormValue("order"),
 	}
 
 	validate := validator.New(validator.WithRequiredStructEnabled())
+	validate.RegisterValidation("one_off_or_empty", formrequest.ValidateOneOfOrEmpty)
+
 	err := validate.Struct(formRequest)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -78,6 +83,10 @@ func beersHandler(w http.ResponseWriter, r *http.Request) {
 		beers = filterBeersByName(beers, formRequest.Name)
 	}
 
+	if formRequest.OrderBy != "" {
+		beers = orderBy(beers, formRequest.OrderBy, formRequest.Order)
+	}
+
 	json.NewEncoder(w).Encode(beers)
 }
 
@@ -93,4 +102,57 @@ func filterBeersByName(beers []sampleapis.Beer, name string) []sampleapis.Beer {
 		}
 	}
 	return filtered
+}
+
+func orderBy(beers []sampleapis.Beer, orderBy string, order string) []sampleapis.Beer {
+	if orderBy == "" {
+		return beers // No ordering specified
+	}
+
+	if order == "" {
+		order = "asc" // Default order
+	}
+
+	// Sort beers based on the orderBy field
+	switch orderBy {
+	case "id":
+		sort.Slice(beers, func(i, j int) bool {
+			if order == "asc" {
+				return beers[i].Id < beers[j].Id
+			}
+			return beers[i].Id > beers[j].Id
+		})
+	case "name":
+		sort.Slice(beers, func(i, j int) bool {
+			if order == "asc" {
+				return beers[i].Name < beers[j].Name
+			}
+			return beers[i].Name > beers[j].Name
+		})
+	case "price":
+		sort.Slice(beers, func(i, j int) bool {
+			if order == "asc" {
+				return beers[i].Price < beers[j].Price
+			}
+			return beers[i].Price > beers[j].Price
+		})
+	case "average":
+		sort.Slice(beers, func(i, j int) bool {
+			if order == "asc" {
+				return beers[i].Rating.Average < beers[j].Rating.Average
+			}
+			return beers[i].Rating.Average > beers[j].Rating.Average
+		})
+	case "reviews":
+		sort.Slice(beers, func(i, j int) bool {
+			if order == "asc" {
+				return beers[i].Rating.Reviews < beers[j].Rating.Reviews
+			}
+			return beers[i].Rating.Reviews > beers[j].Rating.Reviews
+		})
+	default:
+		log.Println("Invalid order_by value:", orderBy)
+	}
+
+	return beers
 }

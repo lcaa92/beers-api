@@ -14,7 +14,7 @@ Study Golang API  - a simple beers API
 - [ ] Testing
 
 #### API Behaviour
-- [ ] Ordering (API)
+- [X] Ordering (API)
 - [X] Filter (API)
 
 #### Extra
